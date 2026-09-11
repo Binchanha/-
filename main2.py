@@ -45,7 +45,12 @@ def search_web_with_tavily(query: str) -> str:
     """Tavily API를 사용해 웹을 검색하고 결과를 텍스트로 반환"""
     try:
         # Tavily 검색 실행 (최신 정보 포함, AI 요약용 설정)
-        response = tavily_client.search(query, search_depth="basic", max_results=5)
+        response = tavily_client.search(
+        query, 
+        search_depth="advanced", # basic을 advanced로 변경 (더 깊게 탐색)
+        max_results=10,          # 5개에서 10개로 증가 (더 많은 문맥 확보)
+        include_raw_content=True # (선택사항) 필요시 원본 텍스트를 더 많이 가져옴
+    )
         
         results = response.get('results', [])
         if not results:
@@ -78,8 +83,8 @@ async def verify_endpoint(request: VerifyRequest):
 
         # 2. 제미나이 검증 프롬프트 작성
         prompt = f"""
-        당신은 팩트 체크 및 정보 검증 전문가입니다. 
-        반드시 아래에 제공된 [검색 결과]만을 바탕으로, [사용자 질문]에 해당하는 정보가 실제로 존재하는지 판단해주세요.
+        당신은 최고 수준의 팩트 체크 및 정보 검증 전문가입니다. 
+        제공된 [검색 결과]를 바탕으로 [사용자 질문]에 대한 답이 존재하는지 철저히 분석하세요.
 
         [사용자 질문]
         {request.query}
@@ -87,9 +92,14 @@ async def verify_endpoint(request: VerifyRequest):
         [검색 결과]
         {search_context}
 
+        **[분석 지침 - 반드시 지킬 것]**
+        1. 단어가 완벽히 일치하지 않더라도, 문맥상 같은 의미를 내포하고 있다면 정보가 존재하는 것으로 간주합니다.
+        2. 영어 논문 제목이나 외신 기사가 한국어로 번역되어 질문된 경우, 의미가 통하면 동일한 것으로 판단하세요.
+        3. 검색 결과가 불충분하더라도 파편적인 정보들을 조합하여 답변의 실마리가 있다면 그 내용을 최대한 추출하여 요약하세요.
+
         다음 형식에 맞춰 명확하게 답변해주세요:
         - 정보 존재 여부: (예: 관련 정보가 확인됩니다 / 신뢰할 수 있는 정보를 찾을 수 없습니다)
-        - 핵심 요약: (검색 결과를 바탕으로 한 2~3줄 요약)
+        - 핵심 요약: (확인된 내용을 구체적이고 상세하게 3~4줄 요약)
         - 주요 출처: (확인된 정보의 링크 제공)
         """
         
